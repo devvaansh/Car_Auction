@@ -798,12 +798,29 @@ get_emi_data();
 
     //********* bid */
 
+    // Toggle auto-bid section visibility
+    $('#enable_auto_bid').change(function() {
+        if ($(this).is(':checked')) {
+            $('#auto_bid_section').slideDown();
+            $('#max_auto_bid').prop('required', true);
+        } else {
+            $('#auto_bid_section').slideUp();
+            $('#max_auto_bid').prop('required', false).val('');
+        }
+    });
+
     $('#bidform').validate({
         rules: {
             bidprice: {
             required: true,
             number: true, // Ensures only numeric values
             min: 499
+        },
+        max_auto_bid: {
+            number: true,
+            min: function() {
+                return parseFloat($('#bidprice').val()) + 500 || 500;
+            }
         }
     },
     messages: {
@@ -811,19 +828,37 @@ get_emi_data();
             required: "",
             number:"",
             min:"",
+        },
+        max_auto_bid: {
+            number: "Vänligen ange ett giltigt nummer",
+            min: "Max auto bid måste vara minst 500 SEK högre än ditt bud"
         }
     },
         submitHandler: function(form) {
             // Handle form submission via AJAX
+            var formData = $(form).serialize();
+            
+            // Add max_auto_bid only if auto-bid is enabled
+            if (!$('#enable_auto_bid').is(':checked')) {
+                formData += '&max_auto_bid=';
+            }
+            
             $.ajax({
                 url: '<?= base_url('car/bid/added') ?>',
                 type: 'POST',
-                data: $(form).serialize(),
+                data: formData,
                 success: function(response) {
                     var res = JSON.parse(response);
                     // Show success or error message
                     if (res.status == 'success') {
                         $(".message").html('<span style="color:green;">' + res.message + '</span>');
+                        
+                        // Reset auto-bid form
+                        $('#enable_auto_bid').prop('checked', false);
+                        $('#auto_bid_section').hide();
+                        $('#max_auto_bid').val('');
+                        $('#bidprice').val('');
+                        
                         loadbidbyid();
                         loadbidcountbyid();
                         check_reservationbyid();

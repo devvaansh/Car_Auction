@@ -1067,6 +1067,8 @@ public function bid_added()
     } else {
         $bidprice = $this->input->post('bidprice');
         $car_id = $this->input->post('car_id');
+        $max_auto_bid = $this->input->post('max_auto_bid'); // Optional max auto bid
+        $is_auto_bid = !empty($max_auto_bid) && $max_auto_bid > $bidprice ? 1 : 0;
 
         // Fetch the unique ID for the bid
         $unique_id_data = $this->User_model->get_unique_id_of_user($car_id, $this->session->userdata('user_id'));
@@ -1080,29 +1082,89 @@ public function bid_added()
 
         // Fetch the highest bid for the specific car
         $highest_bid = $this->User_model->get_highest_bid($car_id);
+        $bid_increment = 500; // SEK increment
 
-        // Set the minimum required bid to be 500 higher than the highest bid
-        $minimum_bid = $highest_bid + 500;
+        // Set the minimum required bid
+        $minimum_bid = $highest_bid + $bid_increment;
 
         if ($bidprice >= $minimum_bid) {
             // Insert the new bid
             $data = array(
                 'car_id' => $car_id,
                 'bidding_price' => $bidprice,
+                'max_auto_bid' => $max_auto_bid,
+                'is_auto_bid' => $is_auto_bid,
                 'unique_id' => $unique_id,
                 'user_id' => $this->session->userdata('user_id')
-                // Other fields if necessary
             );
             $this->User_model->insert_bid($data);
+
+            // Process auto-bid logic: check if someone else has auto-bid enabled
+            $this->process_auto_bidding($car_id, $bidprice, $this->session->userdata('user_id'), $bid_increment);
 
             $response = array('status' => 'success', 'message' => 'Bid placed successfully.');
         } else {
             // Error message
-            $response = array('status' => 'error', 'message' => 'Your minimum bid amount should be '.$minimum_bid.' or more you can place.');
+            $response = array('status' => 'error', 'message' => 'Your minimum bid amount should be '.$minimum_bid.' SEK or more you can place.');
         }
     }
 
     echo json_encode($response);
+}
+
+/**
+ * Process auto-bidding when a new bid is placed
+ * Automatically places counter-bids for users with auto-bid enabled
+ */
+private function process_auto_bidding($car_id, $new_bid_price, $new_bidder_user_id, $increment = 500)
+{
+    // Get all active auto-bids for this car (excluding the current bidder)
+    $auto_bids = $this->User_model->get_active_auto_bids($car_id, $new_bidder_user_id);
+    
+    if (empty($auto_bids)) {
+        return; // No auto-bids to process
+    }
+
+    foreach ($auto_bids as $auto_bid) {
+        $max_auto_bid = $auto_bid['max_auto_bid'];
+        $auto_bidder_user_id = $auto_bid['user_id'];
+        
+        // Calculate the next bid price
+        $next_bid_price = $new_bid_price + $increment;
+        
+        // Check if the next bid is within the auto-bid limit
+        if ($next_bid_price <= $max_auto_bid) {
+            // Get unique ID for the auto bidder
+            $unique_id_data = $this->User_model->get_unique_id_of_user($car_id, $auto_bidder_user_id);
+            
+            if ($unique_id_data == 0) {
+                $unique_id_number = $this->User_model->get_unique_id_of_car($car_id);
+                $unique_id = $unique_id_number + 1;
+            } else {
+                $unique_id = $unique_id_data;
+            }
+            
+            // Place automatic counter-bid
+            $auto_bid_data = array(
+                'car_id' => $car_id,
+                'bidding_price' => $next_bid_price,
+                'max_auto_bid' => $max_auto_bid,
+                'is_auto_bid' => 1,
+                'unique_id' => $unique_id,
+                'user_id' => $auto_bidder_user_id
+            );
+            
+            $this->User_model->insert_bid($auto_bid_data);
+            
+            // Recursively check if other auto-bidders need to respond
+            // But only if we haven't reached the max limit
+            if ($next_bid_price < $max_auto_bid) {
+                $this->process_auto_bidding($car_id, $next_bid_price, $auto_bidder_user_id, $increment);
+            }
+            
+            break; // Only process one auto-bid at a time to avoid infinite loops
+        }
+    }
 }
 
 

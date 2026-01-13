@@ -484,6 +484,24 @@ public function insert_bid($data) {
     $this->db->insert('bidding', $data);
 }
 
+/**
+ * Get all active auto-bids for a specific car, excluding a specific user
+ * Returns users who have auto-bid enabled and haven't reached their max yet
+ */
+public function get_active_auto_bids($car_id, $exclude_user_id) {
+    $this->db->select('user_id, MAX(max_auto_bid) as max_auto_bid');
+    $this->db->from('bidding');
+    $this->db->where('car_id', $car_id);
+    $this->db->where('user_id !=', $exclude_user_id);
+    $this->db->where('is_auto_bid', 1);
+    $this->db->where('max_auto_bid IS NOT NULL');
+    $this->db->group_by('user_id');
+    $this->db->order_by('max_auto_bid', 'DESC'); // Highest max auto-bid first
+    
+    $query = $this->db->get();
+    return $query->result_array();
+}
+
 
 public function get_bid($car_id) {
     // Select all fields from both bidding and users tables

@@ -178,7 +178,7 @@ if(!empty($car->reduce_price)){
 <?php if(!empty($gallery_images)){ ?>
 <a href="<?php echo base_url();  ?>car/<?php echo $car->car_slug; ?>"><div class="suporty587">
     <?php
-        $gallery_images  =    json_decode( $gallery_images);
+        // $gallery_images is already decoded as an array on line 113
         
         $image_url ="";
         $image_url1 ="";

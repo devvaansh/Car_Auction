@@ -1089,7 +1089,23 @@ $gallery_images = json_decode($car_view["car_photo_gallery_ids"], true);
           <form name="bidform" id="bidform" >
           <div class="place_wrap_add">
           <?php if(($this->session->userdata('user_id')!=$car_view["post_author_id"]) && get_post_status($car_view["id"]) != "Auction Time Completed"){ ?>
-          <input name="bidprice" id="bidprice" class="plac_inpt" placeholder="Budbelopp" type="text"> <input name="" class="plac_inpt2" value="Lägg bud" type="submit"> <?php } ?>
+          <input name="bidprice" id="bidprice" class="plac_inpt" placeholder="Budbelopp" type="text" required>
+          
+          <div style="margin-top: 10px;">
+            <label style="display: block; margin-bottom: 5px;">
+              <input type="checkbox" id="enable_auto_bid" name="enable_auto_bid" style="margin-right: 5px;">
+              <span style="font-size: 14px;">Aktivera Auto Bid</span>
+            </label>
+            <div id="auto_bid_section" style="display: none; margin-top: 5px;">
+              <input name="max_auto_bid" id="max_auto_bid" class="plac_inpt" placeholder="Max Auto Bid Belopp" type="text" style="margin-bottom: 5px;">
+              <p style="font-size: 12px; color: #666; margin: 5px 0;">
+                <i class="fa fa-info-circle"></i> Systemet kommer automatiskt att lägga bud åt dig upp till ditt maxbelopp
+              </p>
+            </div>
+          </div>
+          
+          <input name="" class="plac_inpt2" value="Lägg bud" type="submit" style="margin-top: 10px;"> 
+          <?php } ?>
           
           <input type="hidden" name="car_id" id="car_id" value="<?php echo $car_view["id"]; ?>" />
           </div>   </form>
